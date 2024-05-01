@@ -34,7 +34,47 @@ from app.utils.link_generation import create_user_links, generate_pagination_lin
 from app.dependencies import get_settings
 from app.services.email_service import EmailService
 router = APIRouter()
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+# Setting up the OAuth2 scheme
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+@router.post("/token", response_model=TokenResponse)
+async def login(
+    form_data: OAuth2PasswordRequestForm = Depends(), 
+    db_session: AsyncSession = Depends(get_db)
+):
+    # Check if the account is locked
+    if await UserService.is_account_locked(db_session, form_data.username):
+        raise HTTPException(
+            status_code=400, 
+            detail="Account locked due to too many failed login attempts."
+        )
+    
+    # Attempt to login user with provided credentials
+    authenticated_user = await UserService.login_user(db_session, form_data.username, form_data.password)
+    if authenticated_user:
+        token_expiration = timedelta(minutes=settings.access_token_expire_minutes)
+        token_data = {
+            "sub": authenticated_user.email,
+            "role": str(authenticated_user.role.name)
+        }
+        
+        # Generate access token
+        access_token = create_access_token(
+            data=token_data, 
+            expires_delta=token_expiration
+        )
+
+        # Return the access token and type
+        return {
+            "access_token": access_token, 
+            "token_type": "bearer"
+        }
+
+    # If login fails, raise an unauthorized error
+    raise HTTPException(
+        status_code=401, 
+        detail="Incorrect email or password."
+    )
 settings = get_settings()
 @router.get("/users/{user_id}", response_model=UserResponse, name="get_user", tags=["User Management Requires (Admin or Manager Roles)"])
 async def get_user(user_id: UUID, request: Request, db: AsyncSession = Depends(get_db), token: str = Depends(oauth2_scheme), current_user: dict = Depends(require_role(["ADMIN", "MANAGER"]))):
