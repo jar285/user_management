@@ -20,10 +20,13 @@ Key Highlights:
 
 from builtins import dict, int, len, str
 from datetime import timedelta
+from http import HTTPStatus
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Response, status, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession
+import app
 from app.dependencies import get_current_user, get_db, get_email_service, require_role
 from app.schemas.pagination_schema import EnhancedPagination
 from app.schemas.token_schema import TokenResponse
@@ -32,6 +35,7 @@ from app.services.user_service import UserService
 from app.services.jwt_service import create_access_token
 from app.utils.link_generation import create_user_links, generate_pagination_links
 from app.dependencies import get_settings
+import pytest
 from app.services.email_service import EmailService
 router = APIRouter()
 # Setting up the OAuth2 scheme
@@ -201,7 +205,10 @@ async def create_user(user: UserCreate, request: Request, db: AsyncSession = Dep
         last_login_at=created_user.last_login_at,
         created_at=created_user.created_at,
         updated_at=created_user.updated_at,
-        links=create_user_links(created_user.id, request)
+        links=create_user_links(created_user.id, request),
+        is_professional=created_user.is_professional,
+        linkedin_profile_url=created_user.linkedin_profile_url,
+        github_profile_url=created_user.github_profile_url
     )
 
 
@@ -285,3 +292,43 @@ async def verify_email(user_id: UUID, token: str, db: AsyncSession = Depends(get
     if await UserService.verify_email_with_token(db, user_id, token):
         return {"message": "Email verified successfully"}
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired verification token")
+
+#Pytest test case for the create user endpoint, ISSUE #9
+
+@pytest.fixture
+def client():
+    with TestClient(app) as c:
+        yield c
+
+@pytest.fixture
+async def db_session():
+    # Assuming you have a session maker or a similar setup
+    session = AsyncSession()
+    yield session
+    await session.rollback()
+
+def test_create_user_endpoint(client, db_session):
+    # Define user creation data including professional status and profile URLs
+    user_data = {
+        "email": "newprofessional@example.com",
+        "password": "strongpassword",
+        "nickname": "newpro123",
+        "is_professional": True,
+        "linkedin_profile_url": "https://linkedin.com/in/newpro123",
+        "github_profile_url": "https://github.com/newpro123"
+    }
+
+    # Send POST request to the create user endpoint
+    response = client.post("/users/", json=user_data)
+    assert response.status_code == HTTPStatus.CREATED, "Expected 201, got {response.status_code}"
+
+    # Check the response data
+    response_json = response.json()
+    assert response_json['email'] == user_data['email'], "Email mismatch in response"
+    assert response_json['nickname'] == user_data['nickname'], "Nickname mismatch in response"
+    assert response_json['is_professional'] == user_data['is_professional'], "Professional status mismatch in response"
+    assert response_json['linkedin_profile_url'] == user_data['linkedin_profile_url'], "LinkedIn URL mismatch in response"
+    assert response_json['github_profile_url'] == user_data['github_profile_url'], "GitHub URL mismatch in response"
+
+    # Optionally, verify that the response includes navigation links
+    assert 'links' in response_json, "Response should include navigation links"
