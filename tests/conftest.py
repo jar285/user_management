@@ -26,6 +26,8 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, scoped_session
 from faker import Faker
+from fastapi.testclient import TestClient
+
 
 # Application-specific imports
 from app.main import app
@@ -36,6 +38,7 @@ from app.utils.security import hash_password
 from app.utils.template_manager import TemplateManager
 from app.services.email_service import EmailService
 from app.services.jwt_service import create_access_token
+from app.main import app  # ensure this import points to your FastAPI application
 
 fake = Faker()
 
@@ -238,3 +241,20 @@ def email_service():
         mock_service.send_verification_email.return_value = None
         mock_service.send_user_email.return_value = None
         return mock_service
+
+@pytest.fixture(scope="function")
+def client():
+    with TestClient(app) as c:
+        yield c
+
+@pytest.fixture(scope="function")
+def valid_token():
+    # Assuming you have a method `create_access_token` that generates a JWT
+    # You may need a mock user or predefined claims for the token
+    user_data = {
+        "sub": "some-user-id",
+        "role": "USER"
+    }
+    token = create_access_token(data=user_data, expires_delta=timedelta(minutes=30))
+    return token
+

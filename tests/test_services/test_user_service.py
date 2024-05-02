@@ -1,4 +1,5 @@
 from builtins import range
+import uuid
 import pytest
 from sqlalchemy import select
 from app.dependencies import get_settings
@@ -276,3 +277,37 @@ async def test_email_verification_with_stale_token(db_session, user):
         verification_success = await UserService.verify_email_with_token(db_session, user.id, old_token)
 
     assert verification_success, "An expired token should still be treated as valid if not explicitly expired by system logic"
+
+async def test_first_user_admin_role(db_session, email_service):
+    # Setup user data without specifying a role
+    user_data = {
+        "nickname": generate_nickname(),
+        "email": "admin@example.com",
+        "password": "Secure*1234"
+    }
+    admin_user = await UserService.create(db_session, user_data, email_service)
+    assert admin_user is not None, "Admin user should be created"
+    assert admin_user.role == UserRole.ADMIN, "First user should be assigned ADMIN role"
+    assert admin_user.email_verified, "Admin user should have verified email"
+
+#Testing that subsequent users are assigned the ANONYMOUS role and are not auto-verified**: python
+
+async def test_subsequent_user_default_role(db_session, email_service):
+    # Create a first user to set the admin
+    first_user_data = {
+        "nickname": generate_nickname(),
+        "email": "firstuser@example.com",
+        "password": "FirstUser1234"
+    }
+    first_user = await UserService.create(db_session, first_user_data, email_service)
+
+    # Now test the role assignment for the next user
+    user_data = {
+        "nickname": generate_nickname(),
+        "email": "user@example.com",
+        "password": "User1234"
+    }
+    user = await UserService.create(db_session, user_data, email_service)
+    assert user is not None, "Subsequent user should be created"
+    assert user.role == UserRole.ANONYMOUS, "Subsequent user should be assigned ANONYMOUS role"
+    assert not user.email_verified, "Subsequent user should not have auto-verified email"
