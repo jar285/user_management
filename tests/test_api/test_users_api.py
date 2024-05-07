@@ -242,3 +242,48 @@ async def test_overview_of_users(async_client, admin_token):
     user_list = response.json()
     assert "items" in user_list, "Response missing expected 'items' key"
     # Validate pagination and structure of user list further if necessary
+
+@pytest.mark.asyncio
+async def test_update_professional_status_as_admin(async_client, admin_token, regular_user):
+    """Test that an admin can update the professional status."""
+    headers = {"Authorization": f"Bearer {admin_token}"}
+    updated_status = {"is_professional": True}
+    
+    # Attempt to update the professional status
+    response = await async_client.patch(
+        f"/users/{regular_user.id}/professional-status?is_professional=true",
+        headers=headers
+    )
+    assert response.status_code == 200
+    response_data = response.json()
+    assert response_data["id"] == str(regular_user.id)
+    assert response_data["is_professional"] is True
+
+@pytest.mark.asyncio
+async def test_update_professional_status_as_manager(async_client, manager_token, regular_user):
+    """Test that a manager can update the professional status."""
+    headers = {"Authorization": f"Bearer {manager_token}"}
+    updated_status = {"is_professional": False}
+    
+    # Attempt to update the professional status
+    response = await async_client.patch(
+        f"/users/{regular_user.id}/professional-status?is_professional=false",
+        headers=headers
+    )
+    assert response.status_code == 200
+    response_data = response.json()
+    assert response_data["id"] == str(regular_user.id)
+    assert response_data["is_professional"] is False
+
+@pytest.mark.asyncio
+async def test_update_professional_status_access_denied(async_client, user_token, regular_user):
+    """Test that a regular user cannot update the professional status."""
+    headers = {"Authorization": f"Bearer {user_token}"}
+    
+    # Attempt to update the professional status, expecting an error
+    response = await async_client.patch(
+        f"/users/{regular_user.id}/professional-status?is_professional=true",
+        headers=headers
+    )
+    assert response.status_code == 403  # Forbidden
+    assert "Operation not permitted" in response.json()["detail"]
