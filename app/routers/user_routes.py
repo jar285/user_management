@@ -136,7 +136,14 @@ async def get_user(user_id: UUID, request: Request, db: AsyncSession = Depends(g
 # experience by adhering to REST principles and providing self-discoverable operations.
 
 @router.put("/users/{user_id}", response_model=UserResponse, name="update_user", tags=["User Management Requires (Admin or Manager Roles)"])
-async def update_user(user_id: UUID, user_update: UserUpdate, request: Request, db: AsyncSession = Depends(get_db), token: str = Depends(oauth2_scheme), current_user: dict = Depends(require_role(["ADMIN", "MANAGER"]))):
+async def update_user(
+    user_id: UUID,
+    user_update: UserUpdate,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    token: str = Depends(oauth2_scheme),
+    current_user: dict = Depends(require_role(["ADMIN", "MANAGER"]))
+):
     """
     Update user information.
 
@@ -144,6 +151,11 @@ async def update_user(user_id: UUID, user_update: UserUpdate, request: Request, 
     - **user_update**: UserUpdate model with updated user information.
     """
     user_data = user_update.model_dump(exclude_unset=True)
+
+    # Restrict sensitive fields based on user roles
+    if current_user["role"] not in ["ADMIN", "MANAGER"]:
+        user_data.pop("role", None)  # Remove `role` field if not an admin/manager
+
     updated_user = await UserService.update(db, user_id, user_data)
     if not updated_user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
@@ -160,9 +172,49 @@ async def update_user(user_id: UUID, user_update: UserUpdate, request: Request, 
         profile_picture_url=updated_user.profile_picture_url,
         github_profile_url=updated_user.github_profile_url,
         linkedin_profile_url=updated_user.linkedin_profile_url,
+        is_professional=updated_user.is_professional,
         created_at=updated_user.created_at,
         updated_at=updated_user.updated_at,
         links=create_user_links(updated_user.id, request)
+    )
+
+
+@router.patch("/users/{user_id}/professional-status", response_model=UserResponse, tags=["User Management"])
+async def update_professional_status(
+    user_id: UUID,
+    is_professional: bool,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_role(["ADMIN", "MANAGER"]))
+):
+    # Retrieve the user from the database
+    user = await UserService.get_by_id(db, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Check that the current user has the right role (ADMIN or MANAGER)
+    if current_user["role"] not in ["ADMIN", "MANAGER"]:
+        raise HTTPException(status_code=403, detail="You are not authorized to update this user's professional status")
+
+    # Update the professional status
+    user.is_professional = is_professional
+    await db.commit()
+
+    # Return the updated user information
+    return UserResponse(
+        id=user.id,
+        nickname=user.nickname,
+        email=user.email,
+        is_professional=user.is_professional,
+        professional_status_updated_at=datetime.now(),  # Update the timestamp or get it from the model
+        bio=user.bio,
+        first_name=user.first_name,
+        last_name=user.last_name,
+        profile_picture_url=user.profile_picture_url,
+        linkedin_profile_url=user.linkedin_profile_url,
+        github_profile_url=user.github_profile_url,
+        role=user.role,
+        created_at=user.created_at,
+        updated_at=user.updated_at
     )
 
 
