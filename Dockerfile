@@ -11,12 +11,13 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /myapp
 
-# Install system dependencies and update all packages
+# Install system dependencies and update `libc-bin` to the fixed version
 RUN apt-get update \
-    && apt-get upgrade -y \
+    && apt-get -y upgrade \
     && apt-get install -y --no-install-recommends \
         gcc \
         libpq-dev \
+        libc-bin=2.36-9+deb12u7 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
