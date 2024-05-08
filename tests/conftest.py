@@ -39,6 +39,8 @@ from app.utils.template_manager import TemplateManager
 from app.services.email_service import EmailService
 from app.services.jwt_service import create_access_token
 from app.main import app  # ensure this import points to your FastAPI application
+from app.models.user_model import User, UserRole
+from app.utils.security import hash_password
 
 fake = Faker()
 
@@ -258,3 +260,18 @@ def valid_token():
     token = create_access_token(data=user_data, expires_delta=timedelta(minutes=30))
     return token
 
+@pytest.fixture(scope="function")
+async def regular_user(db_session: AsyncSession):
+    """Fixture that creates and returns a regular authenticated user."""
+    user = User(
+        nickname="regular_user",
+        email="regular_user@example.com",
+        first_name="Jane",
+        last_name="Doe",
+        hashed_password=hash_password("SecurePassword!1234"),
+        role=UserRole.AUTHENTICATED,
+        is_locked=False,
+    )
+    db_session.add(user)
+    await db_session.commit()
+    return user

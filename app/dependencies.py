@@ -8,6 +8,7 @@ from app.services.email_service import EmailService
 from app.services.jwt_service import decode_token
 from settings.config import Settings
 from fastapi import Depends
+from contextlib import asynccontextmanager
 
 def get_settings() -> Settings:
     """Return application settings."""
@@ -24,7 +25,9 @@ async def get_db() -> AsyncSession:
         try:
             yield session
         except Exception as e:
+            await session.rollback()  # Rollback changes on error
             raise HTTPException(status_code=500, detail=str(e))
+
         
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
@@ -50,3 +53,16 @@ def require_role(role: str):
             raise HTTPException(status_code=403, detail="Operation not permitted")
         return current_user
     return role_checker
+
+@asynccontextmanager
+async def get_session():
+    """Provides an asynchronous session manager."""
+    async_session_factory = Database.get_session_factory()
+    async with async_session_factory() as session:
+        try:
+            yield session
+        except Exception as e:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()

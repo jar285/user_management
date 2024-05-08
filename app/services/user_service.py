@@ -17,6 +17,7 @@ from app.models.user_model import UserRole
 import logging
 from sqlalchemy import func, update, select
 from app.schemas.user_schemas import UserCreate, UserUpdate, UserResponse
+from app.dependencies import get_session
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -90,32 +91,28 @@ class UserService:
     @classmethod
     async def update(cls, session: AsyncSession, user_id: UUID, update_data: Dict[str, str]) -> Optional[User]:
         try:
-         # Extract specific data and validate update payload
+            # Extract specific data and validate update payload
             validated_data = UserUpdate(**update_data).model_dump(exclude_unset=True)
-
-         # If updating password, hash it before saving
+            # If updating password, hash it before saving
             if 'password' in validated_data:
-                 validated_data['hashed_password'] = hash_password(validated_data.pop('password'))
-        
+                validated_data['hashed_password'] = hash_password(validated_data.pop('password'))
+
             # Apply updates to the user
             query = update(User).where(User.id == user_id).values(**validated_data).execution_options(synchronize_session="fetch")
-            result = await cls._execute_query(session, query)
-            if result is None:
-                logger.error(f"Update failed for User {user_id}")
-                return None
+            await session.execute(query)
+            await session.commit()
 
-        # Fetch updated user to ensure the update was applied
+            # Fetch updated user to ensure the update was applied
             updated_user = await cls.get_by_id(session, user_id)
             if updated_user:
                 session.refresh(updated_user)  # Ensure the session has the latest data
-                logger.info(f"User {user_id} updated successfully with data: {validated_data}")
                 return updated_user
             else:
-                logger.error(f"User {user_id} not found after update attempt.")
-            return None
+                return None
         except Exception as e:
             logger.error(f"Error during user update: {e}")
             return None
+    
 
 
     @classmethod
@@ -254,4 +251,34 @@ class UserService:
         ]
 
         return user_responses
+    
+    @classmethod
+    async def update_professional_status(cls, session: AsyncSession, user_id: UUID, is_professional: bool) -> Optional[User]:
+        """
+        Update the professional status of a user.
+
+        :param session: An AsyncSession instance for database access.
+        :param user_id: UUID of the user to update.
+        :param is_professional: Boolean indicating the desired professional status.
+        :return: The updated user object if successful, or None if the user was not found.
+        """
+        try:
+            # Retrieve the user by ID
+            user = await cls.get_by_id(session, user_id)
+            if not user:
+                logger.error(f"User {user_id} not found")
+                return None
+
+            # Update the professional status and set the current timestamp
+            user.update_professional_status(is_professional)
+            session.add(user)
+            await session.commit()
+
+            logger.info(f"User {user_id} professional status updated to {is_professional}")
+            return user
+        except Exception as e:
+            logger.error(f"Error updating professional status for User {user_id}: {e}")
+            await session.rollback()
+            return None
+
 
