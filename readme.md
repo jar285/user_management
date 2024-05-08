@@ -1,3 +1,15 @@
+# 🚀 The User Management System: A Cutting-Edge Learning Experience for Students, IS219 Final Project:
+
+The User Management System is an incredible project that not only showcases the power of modern web development technologies but also serves as a comprehensive learning resource for students across various fields. By adhering to industry best practices, incorporating the principles of the 12-Factor App methodology, and embracing the Agile Manifesto, this project offers a realistic and immersive experience that prepares students for the challenges and demands of the professional world.
+
+## [Reflection Document(My Experience)](https://docs.google.com/document/d/1L2G-kRphnkdUr_gx0lXXBMiAZKX6XO_LugCwzE3SgWQ/edit?usp=sharing) 
+
+### [DockerHub Repository](https://hub.docker.com/repository/docker/jar285/user_management/general)
+<img width="1429" alt="Captura de pantalla 2024-05-07 a la(s) 9 08 32 p m" src="https://github.com/jar285/user_management/assets/114256420/ab09e850-c63a-4689-85c5-88cdbe433fff">
+
+## CI/CD Pipeline, GitHub Actions [![CI/CD Pipeline](https://github.com/jar285/user_management/actions/workflows/production.yml/badge.svg)](https://github.com/jar285/user_management/actions/workflows/production.yml)
+
+
 Here's the content with a more engaging and motivational tone:
 
 # The User Management System Final Project: Your Epic Coding Adventure Awaits! 🎉✨🔥
@@ -7,7 +19,7 @@ Here's the content with a more engaging and motivational tone:
 Welcome to the User Management System project - an epic open-source adventure crafted by the legendary Professor Keith Williams for his rockstar students at NJIT! 🏫👨‍🏫⭐ This project is your gateway to coding glory, providing a bulletproof foundation for an event management system that will blow your mind! 🤯 You'll bridge the gap between the realms of seasoned software pros and aspiring student developers like yourselves. Brace yourselves for mind-blowing company tours, captivating guest speaker sessions, and realistic mock interviews that will give you an electrifying taste of the real deal! 💼⚡
 
 - [Introduction to the system features and overview of the project - please read](system_documentation.md) 📚
-- [Instructor Video - Project Overview and Tips - TBA I'll do it Monday and you will have 2 weeks from tuesday to finish it]() 🎥
+- [Instructor Video - Project Overview and Tips](https://youtu.be/gairLNAp6mA) 🎥
 - [Project Setup Instructions](setup.md) ⚒️
 - [Features to Select From](features.md) 🛠️
 - [About the Project](about.md)🔥🌟
